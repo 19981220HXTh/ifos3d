@@ -1,0 +1,123 @@
+Import('*')
+import subprocess, shlex, sys
+
+def get_branch_hash():
+  git_cmd = ['git rev-parse --abbrev-ref HEAD', 'git rev-parse --short HEAD', "git log -n1 --pretty=%s"]
+  branch_hash = ''
+  for cmd in git_cmd:
+    kwargs = {}
+    kwargs['stdout'] = subprocess.PIPE
+    kwargs['stderr'] = subprocess.PIPE
+    proc = subprocess.Popen(shlex.split(cmd), **kwargs)
+    (stdout_str, stderr_str) = proc.communicate()
+    return_code = proc.wait()
+    if return_code != 0:
+      sys.exit(1)
+    branch_hash += '-' + stdout_str.strip().replace(' ', '-')
+
+  return branch_hash
+
+if not model_scr:  
+  model_scr = "hh_toy_true.c"
+
+ifos_util = """
+absorb.c \
+av_mat.c \
+comm_ini.c \
+info.c \
+initproc.c \
+merge.c \
+mergemod.c \
+note.c \
+outseis.c \
+output_source_signal.c \
+rd_sour.c \
+readdsk.c \
+json_parser.c \
+read_par_json.c \
+exchange_par.c \
+receiver.c \
+readmod.c \
+saveseis.c \
+sources.c \
+splitrec.c \
+splitsrc.c \
+util.c \
+wavelet.c \
+writedsk.c \
+writemod.c \
+writepar.c \
+fusion.c \
+debug.c \
+exchange_Ffv.c \
+"""
+
+bin_name = "ifos3d"
+
+obj1 = env.StaticObject(("""
+ifos3d.c \
+comm_ini_s.c \
+checkfd_ssg.c \
+CPML_coeff.c \
+CPML_ini_elastic.c \
+seismo_ssg.c \
+matcopy.c \
+surface_ssg.c \
+surface_ssg_elastic.c \
+update_s_ssg.c \
+update_s_ssg_CPML.c \
+update_s_ssg_elastic.c \
+update_s_ssg_CPML_elastic.c \
+update_v_ssg.c \
+update_v_ssg_CPML.c \
+snap_ssg.c \
+exchange_v.c \
+exchange_s.c \
+psource.c \
+readseis.c \
+readseis_split.c \
+residual.c \
+zero_wavefield.c \
+gradient_F.c \
+conjugategrad.c \
+hess_F.c \
+readhess.c \
+modelupdate.c \
+zero_invers.c \
+zero_grad.c \
+precongrad.c \
+hess_apply.c \
+outgrad.c \
+outmod.c \
+steplength.c \
+cpmodel.c \
+readinv.c \
+disc_fourier.c \
+exchange_Fv.c \
+filt_seis.c \
+model2_5D.c \
+smooth.c \
+lbfgs.c \
+lbfgs_save.c \
+constant_boundary.c \
+%s \
+%s 
+""" % (model_scr, ifos_util)).split())
+#ifos3d =  env.Program(target = bin_name, source = obj1,
+#                      LINK = ['mpiicc'])
+
+
+
+env_slave = env.Clone(CC = ['sw5cc.new', '-slave', '-msimd'], CCFLAGS = [], CPPFLAGS = [])
+obj2 = env_slave.StaticObject("""
+update_v_ssg_slave.c \
+update_s_ssg_elastic_slave.c \
+gradient_F_slave.c \
+""".split())
+ifos3d =  env.Program(target = bin_name, source = obj1 + obj2,
+                      LINK = ['mpicc'], LIBS = ['fortran', 'ffio', 'cseife', 'm_slave'])
+
+env.Install('#bin', ifos3d)
+
+if ARGUMENTS.get('install') == '1':
+  env.InstallAs('#bin/' + bin_name + get_branch_hash(), pmcl3d)

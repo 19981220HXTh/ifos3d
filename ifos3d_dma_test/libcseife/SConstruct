@@ -1,0 +1,38 @@
+import os
+import sys
+action = ''
+if '-c' in sys.argv:
+  action = 'clean'
+
+env = Environment(ENV = os.environ)
+
+inc_path = ['-isystem', '.']
+lib_name = 'libcseife.a'
+
+# compiler flags
+env['F90'] = ['mpif90']
+env['CC'] = ['mpicc']
+env['LINK'] = ['mpicc', '-wd11021']
+env.Append(CCFLAGS = ['-w', '-O3', '-mieee'] + inc_path, F90FLAGS = ['-O2'])
+env.Append(LIBS = ['m', 'cseife'])
+
+sources = ['cseife', 'cseife_deriv', 'cseife_gauss', 'cseife_rekfl', 'cseife_rfk', 'cseife_tides']
+if not action == 'clean':
+  for source in sources:
+    if not os.path.exists(source + '.d'):
+      com =	"""
+            %s -ec '%s -M %s %s \
+            | sed '\\''s,\\(%s\\)\\.o[ :]*,./\\1.o %s : ,g'\\'' \
+            > %s; \
+            [ -s %s ] || rm -f %s'
+            """ % (env['SHELL'], ''.join(env['CC']), ''.join(inc_path), source + '.c', source, source + '.d', source + '.d', source + '.d', source + '.d')
+      print(com)
+      os.popen(com)
+obj1=env.StaticObject(source = sources)
+ar = env.StaticLibrary(target = lib_name, source = obj1)
+
+if action == 'clean':
+  for source in sources:
+    print ('rm %s.d' % source)
+    if os.path.exists(source + '.d'):
+      os.remove(source + '.d')

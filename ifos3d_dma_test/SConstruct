@@ -1,0 +1,32 @@
+import os
+
+inc_path = ['-isystem', 'libcseife']
+lib_path = ['./../libcseife','/home/export/online1/mdt00/shisuan/sweq/tools/scons/lib/scons/SCons']
+env = Environment(ENV = os.environ)
+
+# compiler flags
+#env['F90'] = ['mpiifort']
+#env['CC'] = ['mpiicc']
+#env['LINK'] = ['mpiicc', '-wd11021']
+#env.Append(CCFLAGS = ['-Wall', '-O3'] + inc_path, F90FLAGS = ['-O2'])
+#env.Append(LIBPATH = lib_path)
+#env.Append(LIBS = ['m', 'cseife'])
+
+
+#env['CC'] = ['/usr/sw/mpi/mpi_current/bin/mpic++']
+env['CC'] = ['mpicc']
+env.Append(CCFLAGS = ['-O3', '-Wall','-mieee'] + inc_path )
+env.Append(LIBPATH = lib_path)
+env.Append(LIBS = ['m', 'cseife'])
+
+# set the sub directories (key, value), where value is the name of directory#
+# please make sure the source code are in src subdirectory
+dirlist = [
+   ('lib', 'lib'),
+   ('bin', 'bin'),
+   ('src', 'src'),
+]
+dirs = dict(dirlist)
+
+model_scr = ARGUMENTS.get('model_scr')    
+SConscript('src/SConscript', variant_dir = 'build', duplicate = 0, exports = 'env model_scr')
